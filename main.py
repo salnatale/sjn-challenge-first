@@ -69,6 +69,49 @@ class ReferralNetwork:
             stack.extend(self._children.get(node, []))
         return result
 
+    def all_ancestors(self, user: str) -> list[str]:
+        """for use in later steps
+        Walk up through parents to find all ancestors (direct or indirect)."""
+        result = []
+        current = user
+        while current in self._parents:
+            current = self._parents[current]
+            result.append(current)
+        return result
+
     def get_all_nodes(self) -> set[str]:
         """Return all nodes in the network."""
-        return self._nodes.copy() # so as not to work w/ funky mutable objects. 
+        return self._nodes.copy() # so as not to work w/ funky mutable objects.
+
+
+# =============================================================================
+# Part 2: Influence Metrics (pure functions - do not mutate network)
+# =============================================================================
+
+def top_k_by_reach(network: ReferralNetwork, k: int) -> list[str]:
+    """
+    Rank users by Reach: number of distinct descendants.
+    Returns top k users sorted by reach descending.
+    """
+    reach = {user: len(list(network.all_referrals(user))) for user in network.get_all_nodes()}
+    return sorted(reach, key=lambda u: reach[u], reverse=True)[:k]
+
+
+def top_k_by_flow_centrality(network: ReferralNetwork, k: int) -> list[str]:
+    """
+    Rank users by Flow Centrality.
+    defined as: 
+    number of ordered pairs (s, t) for which u lies on the shortest directed path from s to t,
+    where s and t are distinct users and u is a user between them.
+    """
+    # naive, iterate over all pairs of users and count the number of times u lies on the shortest directed path from s to t.
+    # we can avoid this by checking: 
+    #   - s is an ancestor of u, AND
+    #   - t is a descendant of u
+    # Because u is on path s→t iff above: 
+    # also guarantee no ancestors will be in children, so no need to check for that.
+    flow = {
+        user: len(network.all_ancestors(user)) * len(list(network.all_referrals(user)))
+        for user in network.get_all_nodes()
+    }
+    return sorted(flow, key=lambda u: flow[u], reverse=True)[:k]
