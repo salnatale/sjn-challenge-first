@@ -1,7 +1,8 @@
 from typing import Iterable
 from collections import defaultdict
+from typing import Optional, Callable
 
-
+BONUS_INCREMENT = 10  # bonus offered in $10 increments
 class ReferralError(ValueError):
     pass
 
@@ -161,8 +162,56 @@ def expected_network_size(p: float, days: int) -> float:
 
 
 
-# sanity check : 
-# p=0, days=10: 100.0                                         
-# p=1, days=0: 200.0 ## EOD Indexed. 
+# sanity check :
+# p=0, days=10: 100.0
+# p=1, days=0: 200.0 ## EOD Indexed.
 # p=0.5, days=5: 1139.06
 # p=0.1, days=20: 740.02
+
+
+# =============================================================================
+# Part 4: Incentive Optimization
+# =============================================================================
+
+
+
+def min_bonus_for_target(
+    days: int,
+    target_network_size: int,
+    adoption_prob: Callable[[int], float], 
+    initial_high: int = BONUS_INCREMENT  # optional initial high bound, perhaps of prior runs. 
+) -> Optional[int]:
+    """
+    Find minimum bonus ($10 increments) to reach target network size.
+
+    Args:
+        days: number of days to simulate
+        target_network_size: target network size to reach
+        adoption_prob: black-box function mapping bonus -> probability (monotonic non-decreasing, expensive)
+
+    Returns:
+        Smallest bonus achieving target, or None if impossible.
+    """
+    def reaches_target(bonus: int) -> bool:
+        p = adoption_prob(bonus)
+        return expected_network_size(p, days) >= target_network_size
+
+    # Strategy: binary search over expensive function, to reduce overall cost to O(log n) calls to adoption_prob.
+    
+    # Phase 1: find upper bound, exponentially increasing + maybe we have reference we can inject? 
+    low, high = 0, initial_high
+    while not reaches_target(high):
+        if adoption_prob(high) >= 1.0:
+            return None  # max probability, still can't reach
+        low = high
+        high *= 2
+
+    # Phase 2: binary search for exact correct bonus amount. 
+    while low + BONUS_INCREMENT <= high:
+        mid = round((low + high) / 2 / BONUS_INCREMENT) * BONUS_INCREMENT  # instead of default round to support all increments.
+        if reaches_target(mid):
+            high = mid
+        else:
+            low = mid + BONUS_INCREMENT
+
+    return low
