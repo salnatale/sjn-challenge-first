@@ -115,3 +115,54 @@ def top_k_by_flow_centrality(network: ReferralNetwork, k: int) -> list[str]:
         for user in network.get_all_nodes()
     }
     return sorted(flow, key=lambda u: flow[u], reverse=True)[:k]
+
+# =============================================================================
+# Part 3: Growth
+# =============================================================================
+
+def expected_network_size(p: float, days: int) -> float:
+    """
+    Rules:
+    - 100 initial referrers, each with capacity 10
+    - Each day, active referrer succeeds with prob p (max 1/day)
+    - Success consumes 1 capacity; at 0, referrer becomes inactive
+    - New referrer joins next day with capacity 10
+
+    expected network size at end of day [days]. initial 100 + num successful referrals. 
+    lifetime capacity 10 successful referrals, per user. Any day, active referrer at most 1 successful. 
+    """
+    def _rebuild_capacity(capacity: list[float], day_successes: float) -> list[float]:
+        new_capacity = [0.0] * 11
+        # compute changes in expectation.
+        for c in range(1, 11):
+            # failed: stay at c
+            new_capacity[c] += capacity[c] * (1 - p)
+            # succeeded: move to c-1
+            new_capacity[c - 1] += capacity[c] * p
+        # new referrers from today's successes join at capacity 10
+        new_capacity[10] += day_successes
+        return new_capacity
+
+    # capacity[c] = expected count (float) of referrers with capacity c
+    # index 0 = inactive, 1-10 = active
+    capacity = [0.0] * 11  # none in each bucket at init. 
+    capacity[10] = 100.0  # start with 100 referrers at capacity 10
+
+    total_successes = 0.0
+
+    for _ in range(days + 1):  # days 0 through days (inclusive)
+        active = sum(capacity[1:11])
+        day_successes = active * p
+        total_successes += day_successes
+
+        capacity = _rebuild_capacity(capacity, day_successes)
+
+    return 100.0 + total_successes
+
+
+
+# sanity check : 
+# p=0, days=10: 100.0                                         
+# p=1, days=0: 200.0 ## EOD Indexed. 
+# p=0.5, days=5: 1139.06
+# p=0.1, days=20: 740.02
