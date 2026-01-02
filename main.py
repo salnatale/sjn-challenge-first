@@ -170,7 +170,7 @@ def expected_network_size(p: float, days: int) -> float:
 
 
 # =============================================================================
-# Part 4: Incentive Optimization
+# Part 4: Incentive
 # =============================================================================
 
 
@@ -197,7 +197,7 @@ def min_bonus_for_target(
         return expected_network_size(p, days) >= target_network_size
 
     # Strategy: binary search over expensive function, to reduce overall cost to O(log n) calls to adoption_prob.
-    
+
     # Phase 1: find upper bound, exponentially increasing + maybe we have reference we can inject? 
     low, high = 0, initial_high
     while not reaches_target(high):
